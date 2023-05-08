@@ -1,0 +1,8 @@
+{
+  "client_id": "your_client_id_here",
+  "redirect_uri": "msauth://your_package_name/your_scheme",
+  "account_mode": "SINGLE",
+  "authority": "https://login.microsoftonline.com/your_tenant_id_here",
+  "authorization_user_agent": "DEFAULT",
+  "validate_authority": true
+}
