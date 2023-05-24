@@ -3,12 +3,12 @@ package com.vinay.microsoftidentity
 /**
  * Created by Vinay on 08,May,2023
  */
-import android.net.Uri
 import androidx.appcompat.app.AppCompatActivity
-import androidx.browser.customtabs.CustomTabsIntent
-import androidx.core.content.ContextCompat
+import com.microsoft.identity.client.AcquireTokenParameters
 import com.microsoft.identity.client.AuthenticationCallback
 import com.microsoft.identity.client.IAccount
+import com.microsoft.identity.client.IAuthenticationResult
+import com.microsoft.identity.client.IPublicClientApplication
 import com.microsoft.identity.client.ISingleAccountPublicClientApplication
 import com.microsoft.identity.client.exception.MsalException
 
@@ -20,25 +20,12 @@ import com.microsoft.identity.client.exception.MsalException
 fun AppCompatActivity.performSignIn(
     publicClientApplication: ISingleAccountPublicClientApplication?,
     scopes: Array<String>,
-    authorityUrl: String,
-    redirectUri: String,
     signInButtonClickListener: () -> Unit,
     tokenCallback: (String, String, String) -> Unit,
     errorCallback: (String) -> Unit
 ) {
     // Call createSingleAccountPublicClientApplication in a background thread
     if (publicClientApplication != null) {
-        // do something with pca
-        // Create a custom tab intent and launch the authentication URL
-        val customTabsIntent = CustomTabsIntent.Builder()
-            .setToolbarColor(
-                ContextCompat.getColor(
-                    this@performSignIn,
-                    android.R.color.holo_red_dark
-                )
-            )
-            .build()
-
         publicClientApplication.signIn(
             this@performSignIn,
             null,
@@ -63,16 +50,71 @@ fun AppCompatActivity.performSignIn(
                     errorCallback("Error during sign-in: ${exception.message}")
                 }
             })
-
-        // Launch the custom tab and set a callback for when the sign-in button is clicked
-        customTabsIntent.launchUrl(this@performSignIn, Uri.parse(authorityUrl))
         signInButtonClickListener()
     } else {
         // handle error
     }
 }
 
+fun AppCompatActivity.performSignOut(
+    publicClientApplication: ISingleAccountPublicClientApplication?,
+    signOutCallback: () -> Unit,
+    errorCallback: (String) -> Unit
+) {
+    if (publicClientApplication != null) {
+        val account = publicClientApplication.currentAccount
 
+        if (account != null) {
+            publicClientApplication.signOut(object : ISingleAccountPublicClientApplication.SignOutCallback {
+                override fun onSignOut() {
+                    signOutCallback()
+                }
 
+                override fun onError(exception: MsalException) {
+                    errorCallback("Error during sign-out: ${exception.message}")
+                }
+            })
+        } else {
+            errorCallback("No signed-in account found.")
+        }
+    } else {
+        // Handle error
+    }
+}
+fun IPublicClientApplication.signIn(
+    activity: AppCompatActivity,
+    callback: (SignInResult) -> Unit
+) {
+    val scopes = arrayOf("User.Read") // Specify the desired scopes for your application
 
+    val signInParameters = AcquireTokenParameters.Builder()
+        .startAuthorizationFromActivity(activity)
+        .withScopes(listOf(*scopes))
+        .withCallback(object : AuthenticationCallback {
+            override fun onSuccess(authenticationResult: IAuthenticationResult?) {
+                val accessToken = authenticationResult?.accessToken
+                callback(SignInResult.Success(accessToken))
+            }
+
+            override fun onCancel() {
+                callback(SignInResult.Cancel)
+            }
+
+            override fun onError(exception: MsalException?) {
+                callback(SignInResult.Failure(exception))
+            }
+        })
+        .build()
+
+    acquireToken(signInParameters)
+}
+
+sealed class SignInResult {
+    data class Success(val accessToken: String?) : SignInResult()
+    object Cancel : SignInResult()
+    data class Failure(val exception: MsalException?) : SignInResult()
+}
+ fun IPublicClientApplication.logout() {
+
+}
 

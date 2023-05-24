@@ -1,20 +1,28 @@
 package com.vinay.microsoftidentity
 
+import android.content.Context
 import android.os.Bundle
+import android.util.Log
 import android.view.Menu
 import android.view.MenuItem
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.WindowCompat
+import androidx.lifecycle.lifecycleScope
 import androidx.navigation.findNavController
 import androidx.navigation.ui.AppBarConfiguration
 import androidx.navigation.ui.navigateUp
 import androidx.navigation.ui.setupActionBarWithNavController
 import com.google.android.material.snackbar.Snackbar
+import com.google.gson.Gson
 import com.microsoft.identity.client.IPublicClientApplication
 import com.microsoft.identity.client.ISingleAccountPublicClientApplication
 import com.microsoft.identity.client.PublicClientApplication
+import com.microsoft.identity.client.PublicClientApplicationConfiguration
+import com.microsoft.identity.client.SingleAccountPublicClientApplication
 import com.microsoft.identity.client.exception.MsalException
 import com.vinay.microsoftidentity.databinding.ActivityMainBinding
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 
 class MainActivity : AppCompatActivity() {
 
@@ -40,6 +48,7 @@ class MainActivity : AppCompatActivity() {
         val navController = findNavController(R.id.nav_host_fragment_content_main)
         appBarConfiguration = AppBarConfiguration(navController.graph)
         setupActionBarWithNavController(navController, appBarConfiguration)
+        val resourceId = R.raw.auth_config_single_account
 
         PublicClientApplication.createSingleAccountPublicClientApplication(
             this,
@@ -62,11 +71,13 @@ class MainActivity : AppCompatActivity() {
             Snackbar.make(view, "Replace with your own action", Snackbar.LENGTH_LONG)
                 .setAnchorView(R.id.fab)
                 .setAction("Action", null).show()
+            val application = applicationContext as App
+            val pca = application.getPca()
+
+//            pca?.signIn(this, ::onSignInResult)
             performSignIn(
                 publicClientApplication = singleAccountApp,
                 scopes = scopes,
-                authorityUrl = authorityUrl,
-                redirectUri = redirectUri,
                 signInButtonClickListener = {
                     // This is called when the sign-in button is clicked
                 },
@@ -101,6 +112,24 @@ class MainActivity : AppCompatActivity() {
         val navController = findNavController(R.id.nav_host_fragment_content_main)
         return navController.navigateUp(appBarConfiguration)
                 || super.onSupportNavigateUp()
+    }
+    private fun onSignInResult(result: SignInResult) {
+        when (result) {
+            is SignInResult.Success -> {
+                // Handle successful sign-in
+                val accessToken = result.accessToken
+                Log.d("Sign In", "Access token: $accessToken")
+            }
+            is SignInResult.Cancel -> {
+                // Handle canceled sign-in
+                Log.d("Sign In", "Canceled by user")
+            }
+            is SignInResult.Failure -> {
+                // Handle sign-in failure
+                val exception = result.exception
+                Log.e("Sign In", "Error: ${exception?.message}", exception)
+            }
+        }
     }
 
 }
